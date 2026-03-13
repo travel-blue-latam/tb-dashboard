@@ -2112,20 +2112,14 @@ const ThemeToggle = {
   STORAGE_KEY: 'tb_theme_v2',
 
   init() {
-    const saved      = localStorage.getItem(this.STORAGE_KEY);
-    const sysDark    = window.matchMedia('(prefers-color-scheme: dark)');
-    // Use saved manual preference; otherwise default to dark
-    this._apply(saved !== null ? saved === 'dark' : true);
-    // Update automatically when system changes (only if no manual override)
-    sysDark.addEventListener('change', e => {
-      if (localStorage.getItem(this.STORAGE_KEY) === null) this._apply(e.matches);
-    });
+    // Always default to dark — user can toggle per session, resets on reload
+    this._apply(true);
   },
 
   toggle() {
     const isDark = document.body.classList.contains('dark');
     this._apply(!isDark);
-    localStorage.setItem(this.STORAGE_KEY, !isDark ? 'dark' : 'light');
+    // No localStorage save — always resets to dark on next load
   },
 
   _apply(isDark) {
@@ -2258,6 +2252,8 @@ ThemeToggle.init();
     C.custBP   = find('customer bp','customer_bp','customerbp');
     C.channel  = find('channel','canal');
     C.company  = find('company','empresa');
+    C.size     = find('size','tamanho','taille','talla');
+    C.color    = find('color','colour','cor','couleur','color family');
     // Prefer explicit USD column first, then fallback to generic amount/value patterns.
     // This avoids accidentally picking local-currency columns (e.g. "NET AMOUNT (LcCy)")
     // when a proper USD column exists (e.g. "NET AMOUNT (USD)").
@@ -2826,7 +2822,7 @@ ThemeToggle.init();
       const skuMeta = {};
       act25.forEach(r => {
         const s = r[C.sku]; if(!s || skuMeta[s]) return;
-        skuMeta[s] = { desc: r['DESCRIPTION']||'', color: (r['COLOR']||'').toUpperCase(), size: (r['SIZE']||'').toUpperCase() };
+        skuMeta[s] = { desc: r[C.desc]||'', color: (C.color ? r[C.color]||'' : '').toUpperCase(), size: (C.size ? r[C.size]||'' : '').toUpperCase() };
       });
       document.getElementById('tbl-sku').innerHTML = `
         <div class="tbl-wrap" style="max-height:400px;overflow-y:auto;"><table class="tbl">
@@ -2900,6 +2896,57 @@ ThemeToggle.init();
         html += '</div>';
         document.getElementById('div-branch-profiles').innerHTML = html;
       }
+    }
+
+    /* ── Size analysis ── */
+    {
+      const sizeQty25 = {};
+      act25.forEach(r => { const s=(C.size ? r[C.size]||'' : '').trim().toUpperCase(); if(s) sizeQty25[s]=(sizeQty25[s]||0)+num(r[C.qty]); });
+      const sizes = Object.entries(sizeQty25).sort((a,b)=>b[1]-a[1]).slice(0,20).map(e=>e[0]);
+      const szQ24 = sizes.map(s => sum(act24.filter(r => (C.size ? r[C.size]||'' : '').trim().toUpperCase() === s), C.qty));
+      const szQ25 = sizes.map(s => sum(act25.filter(r => (C.size ? r[C.size]||'' : '').trim().toUpperCase() === s), C.qty));
+      const szQ26 = sizes.map(s => sum(act26.filter(r => (C.size ? r[C.size]||'' : '').trim().toUpperCase() === s), C.qty));
+      mkChart('ch-size-bar', { type:'bar',
+        data:{ labels:sizes, datasets:[
+          {label:'2024', data:szQ24, backgroundColor:C_2024+'99', borderRadius:3},
+          {label:'2025', data:szQ25, backgroundColor:C_2025+'cc', borderRadius:3},
+          {label:'2026 YTD', data:szQ26, backgroundColor:C_2026+'cc', borderRadius:3},
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{
+            legend: dLegend(),
+            datalabels:{ display:true, anchor:'end', align:'top', color:'#9aa5bc', font:{size:8,weight:'600'}, formatter: v => v>0 ? Math.round(v).toLocaleString() : '' },
+            tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString()} units` } }
+          },
+          scales: { x:{grid:{color:chartColors().grid},ticks:{color:chartColors().text,font:{size:10}}},
+                    y:{grid:{color:chartColors().grid},ticks:{color:chartColors().text,font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(1)+'K':v}} }
+        }
+      });
+    }
+
+    /* ── Color analysis ── */
+    {
+      const colorQty25 = {};
+      act25.forEach(r => { const c=(C.color ? r[C.color]||'' : '').trim().toUpperCase(); if(c) colorQty25[c]=(colorQty25[c]||0)+num(r[C.qty]); });
+      const colors = Object.entries(colorQty25).sort((a,b)=>b[1]-a[1]).slice(0,20).map(e=>e[0]);
+      const colQ24 = colors.map(c => sum(act24.filter(r => (C.color ? r[C.color]||'' : '').trim().toUpperCase() === c), C.qty));
+      const colQ25 = colors.map(c => sum(act25.filter(r => (C.color ? r[C.color]||'' : '').trim().toUpperCase() === c), C.qty));
+      const colQ26 = colors.map(c => sum(act26.filter(r => (C.color ? r[C.color]||'' : '').trim().toUpperCase() === c), C.qty));
+      mkChart('ch-color-bar', { type:'bar',
+        data:{ labels:colors, datasets:[
+          {label:'2024', data:colQ24, backgroundColor:C_2024+'99', borderRadius:3},
+          {label:'2025', data:colQ25, backgroundColor:C_2025+'cc', borderRadius:3},
+          {label:'2026 YTD', data:colQ26, backgroundColor:C_2026+'cc', borderRadius:3},
+        ]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+          plugins:{
+            legend: dLegend(),
+            datalabels:{ display:true, anchor:'end', align:'right', color:'#9aa5bc', font:{size:8,weight:'600'}, formatter:(v,ctx)=>ctx.datasetIndex===1&&v>0?Math.round(v).toLocaleString():'' },
+            tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${Math.round(ctx.parsed.x).toLocaleString()} units` } }
+          },
+          scales: dScalesH()
+        }
+      });
     }
   }
 
@@ -3064,56 +3111,6 @@ ThemeToggle.init();
       if (secTop) secTop.style.display = 'none';
     }
 
-    /* ── Size analysis ── */
-    {
-      const sizeQty25 = {};
-      act25.forEach(r => { const s=(r['SIZE']||'').trim().toUpperCase(); if(s) sizeQty25[s]=(sizeQty25[s]||0)+num(r[C.qty]); });
-      const sizes = Object.entries(sizeQty25).sort((a,b)=>b[1]-a[1]).slice(0,20).map(e=>e[0]);
-      const szQ24 = sizes.map(s => sum(act24.filter(r => (r['SIZE']||'').trim().toUpperCase() === s), C.qty));
-      const szQ25 = sizes.map(s => sum(act25.filter(r => (r['SIZE']||'').trim().toUpperCase() === s), C.qty));
-      const szQ26 = sizes.map(s => sum(act26.filter(r => (r['SIZE']||'').trim().toUpperCase() === s), C.qty));
-      mkChart('ch-size-bar', { type:'bar',
-        data:{ labels:sizes, datasets:[
-          {label:'2024', data:szQ24, backgroundColor:C_2024+'99', borderRadius:3},
-          {label:'2025', data:szQ25, backgroundColor:C_2025+'cc', borderRadius:3},
-          {label:'2026 YTD', data:szQ26, backgroundColor:C_2026+'cc', borderRadius:3},
-        ]},
-        options:{ responsive:true, maintainAspectRatio:false,
-          plugins:{
-            legend: dLegend(),
-            datalabels:{ display:true, anchor:'end', align:'top', color:'#9aa5bc', font:{size:8,weight:'600'}, formatter: v => v>0 ? Math.round(v).toLocaleString() : '' },
-            tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString()} units` } }
-          },
-          scales: { x:{grid:{color:chartColors().grid},ticks:{color:chartColors().text,font:{size:10}}},
-                    y:{grid:{color:chartColors().grid},ticks:{color:chartColors().text,font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(1)+'K':v}} }
-        }
-      });
-    }
-
-    /* ── Color analysis ── */
-    {
-      const colorQty25 = {};
-      act25.forEach(r => { const c=(r['COLOR']||'').trim().toUpperCase(); if(c) colorQty25[c]=(colorQty25[c]||0)+num(r[C.qty]); });
-      const colors = Object.entries(colorQty25).sort((a,b)=>b[1]-a[1]).slice(0,20).map(e=>e[0]);
-      const colQ24 = colors.map(c => sum(act24.filter(r => (r['COLOR']||'').trim().toUpperCase() === c), C.qty));
-      const colQ25 = colors.map(c => sum(act25.filter(r => (r['COLOR']||'').trim().toUpperCase() === c), C.qty));
-      const colQ26 = colors.map(c => sum(act26.filter(r => (r['COLOR']||'').trim().toUpperCase() === c), C.qty));
-      mkChart('ch-color-bar', { type:'bar',
-        data:{ labels:colors, datasets:[
-          {label:'2024', data:colQ24, backgroundColor:C_2024+'99', borderRadius:3},
-          {label:'2025', data:colQ25, backgroundColor:C_2025+'cc', borderRadius:3},
-          {label:'2026 YTD', data:colQ26, backgroundColor:C_2026+'cc', borderRadius:3},
-        ]},
-        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-          plugins:{
-            legend: dLegend(),
-            datalabels:{ display:true, anchor:'end', align:'right', color:'#9aa5bc', font:{size:8,weight:'600'}, formatter:(v,ctx)=>ctx.datasetIndex===1&&v>0?Math.round(v).toLocaleString():'' },
-            tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${Math.round(ctx.parsed.x).toLocaleString()} units` } }
-          },
-          scales: dScalesH()
-        }
-      });
-    }
   }
 
   /* ================================================================
