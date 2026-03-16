@@ -2252,8 +2252,10 @@ ThemeToggle.init();
     C.custBP   = find('customer bp','customer_bp','customerbp');
     C.channel  = find('channel','canal');
     C.company  = find('company','empresa');
-    C.size     = find('size','tamanho','taille','talla');
-    C.color    = find('color','colour','cor','couleur','color family');
+    C.size       = find('size','tamanho','taille','talla');
+    C.color      = find('color','colour','cor','couleur','color family');
+    C.statusGlob = find('status global','status_global','global status','statusglobal');
+    C.statusLoc  = find('status local', 'status_local', 'local status', 'statuslocal');
     // Prefer explicit USD column first, then fallback to generic amount/value patterns.
     // This avoids accidentally picking local-currency columns (e.g. "NET AMOUNT (LcCy)")
     // when a proper USD column exists (e.g. "NET AMOUNT (USD)").
@@ -2818,16 +2820,70 @@ ThemeToggle.init();
       const kS24=skus.map(s=>sum(act24.filter(r=>norm(r[C.sku])===norm(s)),mCol()));
       const kS25=skus.map(s=>sum(act25.filter(r=>norm(r[C.sku])===norm(s)),mCol()));
       const kS26=skus.map(s=>sum(act26.filter(r=>norm(r[C.sku])===norm(s)),mCol()));
-      // Build a lookup: SKU → { desc, color, size } from 2025 actual rows
+
+      // Build a lookup: SKU → { desc, color, size, statusGlob } from 2025 actual rows
       const skuMeta = {};
-      act25.forEach(r => {
-        const s = r[C.sku]; if(!s || skuMeta[s]) return;
-        skuMeta[s] = { desc: r[C.desc]||'', color: (C.color ? r[C.color]||'' : '').toUpperCase(), size: (C.size ? r[C.size]||'' : '').toUpperCase() };
+      [...act24, ...act25, ...act26].forEach(r => {
+        const s = r[C.sku]; if(!s) return;
+        if (!skuMeta[s]) skuMeta[s] = { desc:'', color:'', size:'', statusGlob:'' };
+        if (!skuMeta[s].desc  && r[C.desc])        skuMeta[s].desc  = r[C.desc];
+        if (!skuMeta[s].color && C.color && r[C.color]) skuMeta[s].color = r[C.color].toUpperCase();
+        if (!skuMeta[s].size  && C.size  && r[C.size])  skuMeta[s].size  = r[C.size].toUpperCase();
+        if (!skuMeta[s].statusGlob && C.statusGlob && r[C.statusGlob]) skuMeta[s].statusGlob = r[C.statusGlob].toUpperCase();
       });
+
+      // Branches — dynamic top branches by 2025 revenue (max 6)
+      const brMap = C.branch ? aggBy(act25, r => r[C.branch]) : {};
+      const branches = C.branch ? topN(brMap, 6) : [];
+      const brData = branches.map(br => {
+        const f = rows => rows.filter(r => norm(r[C.branch]||'') === norm(br));
+        return {
+          br,
+          s24: skus.map(s => sum(f(act24).filter(r=>norm(r[C.sku])===norm(s)), mCol())),
+          s25: skus.map(s => sum(f(act25).filter(r=>norm(r[C.sku])===norm(s)), mCol())),
+          s26: skus.map(s => sum(f(act26).filter(r=>norm(r[C.sku])===norm(s)), mCol())),
+        };
+      });
+
+      const brHdrs = branches.map(br =>
+        `<th class="r" colspan="4" style="background:#1a2340;border-left:2px solid #2a3654;">${br}</th>`
+      ).join('');
+      const brSubHdrs = branches.map(() =>
+        `<th class="r" style="border-left:2px solid #2a3654;">2024</th><th class="r">2025</th><th class="r">%25v24</th><th class="r">2026 YTD</th>`
+      ).join('');
+
+      const statusBadge = s => {
+        if (!s) return '';
+        const col = s === 'A' ? '#22c55e' : s === 'N' ? '#ef4444' : '#f59e0b';
+        return `<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:${col}22;color:${col};border:1px solid ${col}44;">${s}</span>`;
+      };
+
       document.getElementById('tbl-sku').innerHTML = `
-        <div class="tbl-wrap" style="max-height:400px;overflow-y:auto;"><table class="tbl">
-          <thead><tr><th>SKU</th><th>Description</th><th>Color</th><th>Size</th><th class="r">2024</th><th class="r">2025</th><th class="r">%25v24</th><th class="r">2026</th><th class="r">%26v25</th></tr></thead>
-          <tbody>${skus.map((s,i)=>{const m=skuMeta[s]||{};return`<tr><td style="font-weight:600">${s}</td><td style="font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.desc||''}</td><td style="font-size:10px;">${m.color||''}</td><td style="font-size:10px;">${m.size||''}</td><td class="r">${fmt(kS24[i])}</td><td class="r">${fmt(kS25[i])}</td>${pctTd(pct(kS25[i],kS24[i]))}<td class="r">${fmt(kS26[i])}</td>${pctTd(pct(kS26[i],kS25[i]))}</tr>`;}).join('')}
+        <div class="tbl-wrap" style="max-height:500px;overflow:auto;"><table class="tbl">
+          <thead>
+            <tr>
+              <th rowspan="2">SKU</th><th rowspan="2">Description</th><th rowspan="2">Color</th><th rowspan="2">Size</th>
+              ${C.statusGlob ? '<th rowspan="2" class="r">Status</th>' : ''}
+              <th class="r" rowspan="2">2024</th><th class="r" rowspan="2">2025</th><th class="r" rowspan="2">%25v24</th><th class="r" rowspan="2">2026 YTD</th><th class="r" rowspan="2">%26v25</th>
+              ${brHdrs}
+            </tr>
+            <tr>${brSubHdrs}</tr>
+          </thead>
+          <tbody>${skus.map((s,i)=>{
+            const m=skuMeta[s]||{};
+            const brCells = brData.map(b =>
+              `<td class="r" style="border-left:2px solid #2a3654;">${fmt(b.s24[i])}</td><td class="r">${fmt(b.s25[i])}</td>${pctTd(pct(b.s25[i],b.s24[i]))}<td class="r">${fmt(b.s26[i])}</td>`
+            ).join('');
+            return `<tr>
+              <td style="font-weight:600">${s}</td>
+              <td style="font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.desc||''}</td>
+              <td style="font-size:10px;">${m.color||''}</td>
+              <td style="font-size:10px;">${m.size||''}</td>
+              ${C.statusGlob ? `<td class="r">${statusBadge(m.statusGlob)}</td>` : ''}
+              <td class="r">${fmt(kS24[i])}</td><td class="r">${fmt(kS25[i])}</td>${pctTd(pct(kS25[i],kS24[i]))}<td class="r">${fmt(kS26[i])}</td>${pctTd(pct(kS26[i],kS25[i]))}
+              ${brCells}
+            </tr>`;
+          }).join('')}
           </tbody></table></div>`;
     }
 
@@ -3244,10 +3300,12 @@ ThemeToggle.init();
       const bRows=bufRows.filter(r=>r['SKU 2']===sku);
       const rRows=real25.filter(r=>(r[C.sku]||r['SKU 2'])===sku);
 
-      const desc   = sRows[0]?.['DESCRIPTION'] || bRows[0]?.['DESCRIPTION'] || '';
-      const cat    = sRows[0]?.[C.category]    || bRows[0]?.[C.category]    || '';
-      const subcat = sRows[0]?.[C.subcat]      || bRows[0]?.[C.subcat]      || '';
-      const family = sRows[0]?.['FAMILY']      || bRows[0]?.['FAMILY']      || '';
+      const desc       = sRows[0]?.['DESCRIPTION'] || bRows[0]?.['DESCRIPTION'] || '';
+      const cat        = sRows[0]?.[C.category]    || bRows[0]?.[C.category]    || '';
+      const subcat     = sRows[0]?.[C.subcat]      || bRows[0]?.[C.subcat]      || '';
+      const family     = sRows[0]?.['FAMILY']      || bRows[0]?.['FAMILY']      || '';
+      const statusGlob = (sRows[0]?.['Status Global'] || bRows[0]?.['Status Global'] || '').toUpperCase();
+      const statusLoc  = (sRows[0]?.['Status Local']  || bRows[0]?.['Status Local']  || '').toUpperCase();
 
       const stockQty = sRows.reduce((s,r)=>s+num(r['QUANTITY']),0);
       const stockValue = sRows.reduce((s,r)=>{
@@ -3285,7 +3343,7 @@ ThemeToggle.init();
         suggestion={type:'disc',text:'No 2025 LATAM sales + stock → discontinue candidate'};
       }
 
-      return {sku,desc,cat,subcat,family,avg25,stockQty,stockValue,totalBuf,bufByMon,totalCBM,covNow,covByMon,suggestion};
+      return {sku,desc,cat,subcat,family,statusGlob,statusLoc,avg25,stockQty,stockValue,totalBuf,bufByMon,totalCBM,covNow,covByMon,suggestion};
     });
 
     // KPI cards — split Local LATAM vs BONDED
@@ -3375,6 +3433,12 @@ ThemeToggle.init();
       return sortDir*(va-vb);
     });
 
+    const stBadge = (s, colA, colN) => {
+      if (!s) return '—';
+      const col = s === 'A' ? colA : s === 'N' ? colN : '#f59e0b';
+      return `<span style="display:inline-block;padding:1px 5px;border-radius:6px;font-size:9px;font-weight:700;background:${col}22;color:${col};border:1px solid ${col}44;">${s}</span>`;
+    };
+
     const tbody=sorted.map(r=>{
       const ordCells=bufMonths.map(ym=>`<td class="r">${r.bufByMon[ym]?fmtN(r.bufByMon[ym]):''}</td>`).join('');
       const covCells=bufMonths.map(ym=>`<td class="r" style="color:${covCol(r.covByMon[ym])};font-weight:600;">${covFmt(r.covByMon[ym])}</td>`).join('');
@@ -3384,6 +3448,8 @@ ThemeToggle.init();
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;" title="${r.desc}">${r.desc}</td>
         <td style="font-size:10px;">${r.family}</td>
         <td style="font-size:10px;">${r.cat}</td>
+        <td class="r" style="white-space:nowrap;">${stBadge(r.statusGlob,'#22c55e','#ef4444')}</td>
+        <td class="r" style="white-space:nowrap;">${stBadge(r.statusLoc,'#3b82f6','#9ca3af')}</td>
         <td class="r">${r.avg25>0?r.avg25.toFixed(1):'—'}</td>
         <td class="r" style="font-weight:600;">${fmtN(r.stockQty)}</td>
         <td class="r">${r.stockValue>0?'$'+(r.stockValue>=1000?(r.stockValue/1000).toFixed(1)+'K':r.stockValue.toFixed(0)):''}</td>
@@ -3400,6 +3466,8 @@ ThemeToggle.init();
         <th class="sort-btn" data-col="sku">SKU ${arrowFor('sku')}</th>
         <th class="sort-btn" data-col="desc">Description ${arrowFor('desc')}</th>
         <th>Family</th><th>Category</th>
+        <th class="r">Status<br>Global</th>
+        <th class="r">Status<br>Local</th>
         <th class="r sort-btn" data-col="avg25">Avg Mo.<br>2025 ${arrowFor('avg25')}</th>
         <th class="r sort-btn" data-col="stock">Stock<br>Qty ${arrowFor('stock')}</th>
         <th class="r sort-btn" data-col="value">Stock<br>Value ${arrowFor('value')}</th>
