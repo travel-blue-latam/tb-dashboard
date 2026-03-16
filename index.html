@@ -1533,6 +1533,31 @@ body.dark .proj-cmd-box  { background: #1a2a3c; border-color: #2a3a4c; color: #c
   #buf-country-nav button:hover:not(.active) { background: #1e2940; color: #c8d4e8; }
   .sort-btn { cursor: pointer; user-select: none; }
   .sort-btn:hover { color: #3b82f6; }
+
+  /* ── Light mode: buffer country nav ── */
+  body.light #buf-country-nav button { background:#f1f5f9 !important; border-color:#dde3ed !important; color:#475569 !important; }
+  body.light #buf-country-nav button.active { background:#2563eb !important; color:#fff !important; border-color:#2563eb !important; }
+  body.light #buf-country-nav button:hover:not(.active) { background:#e2e8f0 !important; color:#0f172a !important; }
+  /* ── Muted text helper ── */
+  .dash-muted { color:#5b6b8a; }
+  body.light .dash-muted { color:#94a3b8 !important; }
+  /* ── SKU Performance table: sticky left columns ── */
+  .tbl .sk1 { position:sticky; left:0;    z-index:2; min-width:100px; max-width:100px; }
+  .tbl .sk2 { position:sticky; left:100px;z-index:2; min-width:160px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tbl .sk3 { position:sticky; left:260px;z-index:2; min-width:76px; max-width:76px; }
+  .tbl .sk4 { position:sticky; left:336px;z-index:2; min-width:66px; max-width:66px; }
+  .tbl .sk5 { position:sticky; left:402px;z-index:2; min-width:70px; max-width:70px; }
+  .tbl thead .sk1,.tbl thead .sk2,.tbl thead .sk3,.tbl thead .sk4,.tbl thead .sk5 { background:#161d30; }
+  .tbl tbody .sk1,.tbl tbody .sk2,.tbl tbody .sk3,.tbl tbody .sk4,.tbl tbody .sk5 { background:#070b14; }
+  .tbl tbody tr:hover .sk1,.tbl tbody tr:hover .sk2,.tbl tbody tr:hover .sk3,
+  .tbl tbody tr:hover .sk4,.tbl tbody tr:hover .sk5 { background:#111827; }
+  body.light .tbl thead .sk1,body.light .tbl thead .sk2,body.light .tbl thead .sk3,
+  body.light .tbl thead .sk4,body.light .tbl thead .sk5 { background:#f1f5f9 !important; }
+  body.light .tbl tbody .sk1,body.light .tbl tbody .sk2,body.light .tbl tbody .sk3,
+  body.light .tbl tbody .sk4,body.light .tbl tbody .sk5 { background:#ffffff !important; }
+  body.light .tbl tbody tr:hover .sk1,body.light .tbl tbody tr:hover .sk2,
+  body.light .tbl tbody tr:hover .sk3,body.light .tbl tbody tr:hover .sk4,
+  body.light .tbl tbody tr:hover .sk5 { background:#eff6ff !important; }
   </style>
 </head>
 <body>
@@ -2154,11 +2179,15 @@ ThemeToggle.init();
   function isLight() { return document.body.classList.contains('light'); }
   function chartColors() {
     return isLight()
-      ? { text:'#64748b', grid:'#e2e8f0' }
-      : { text:'#5b6b8a', grid:'#1a2236' };
+      ? { text:'#64748b', grid:'#e2e8f0', card:'#ffffff', border:'#dde3ed', muted:'#94a3b8', sep:'#bfdbfe', brHd:'#eff6ff', dimText:'#334155' }
+      : { text:'#5b6b8a', grid:'#1a2236', card:'#141b2d', border:'#1e2940', muted:'#4a5680', sep:'#2a3654', brHd:'#1a2340', dimText:'#9aa5bc' };
   }
-  Chart.defaults.color       = '#5b6b8a';
-  Chart.defaults.borderColor = '#1a2236';
+  function applyChartDefaults() {
+    const cc = chartColors();
+    Chart.defaults.color       = cc.text;
+    Chart.defaults.borderColor = cc.grid;
+  }
+  applyChartDefaults();
   Chart.defaults.font.family = "'DM Sans', sans-serif";
   Chart.register(ChartDataLabels);
   Chart.defaults.plugins.datalabels.display = false; // off by default, enable per chart
@@ -2218,11 +2247,11 @@ ThemeToggle.init();
   }
   function pct(a, b) { return b ? ((a-b)/Math.abs(b))*100 : NaN; }
   function pctHtml(p) {
-    if (!isFinite(p)||isNaN(p)) return '<span style="color:#4a5680">—</span>';
+    if (!isFinite(p)||isNaN(p)) return '<span class="dash-muted">—</span>';
     return `<span class="${p>=0?'pos':'neg'}">${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}%</span>`;
   }
   function pctTd(p) {
-    if (!isFinite(p)||isNaN(p)) return '<td class="r" style="color:#4a5680">—</td>';
+    if (!isFinite(p)||isNaN(p)) return '<td class="r dash-muted">—</td>';
     return `<td class="r ${p>=0?'pp':'pn'}">${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}%</td>`;
   }
 
@@ -2579,6 +2608,7 @@ ThemeToggle.init();
      OVERVIEW
   ================================================================ */
   function renderOverview() {
+    applyChartDefaults();
     const act24=a(2024), act25=a(2025), act26=a(2026);
     // bAll() = BP full year (ignores month filter) · b() = BP filtered by selected month
     const bp26=bAll(2026), bp25=bAll(2025);
@@ -2606,7 +2636,7 @@ ThemeToggle.init();
       <div class="kpi-card">
         <div class="kpi-label">BP ${latestLbl}</div>
         <div class="kpi-value">${fmt(lBP)}</div>
-        <div class="kpi-delta" style="color:#4a5680;">Target</div>
+        <div class="kpi-delta">Target</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">% Ach ${latestLbl}</div>
@@ -2626,7 +2656,7 @@ ThemeToggle.init();
       <div class="kpi-card">
         <div class="kpi-label">Avg Monthly 2025</div>
         <div class="kpi-value">${fmt(s25/12)}</div>
-        <div class="kpi-delta" style="color:#4a5680;">${latestLbl}: ${fmt(lAct)}</div>
+        <div class="kpi-delta">${latestLbl}: ${fmt(lAct)}</div>
       </div>`;
 
     /* Revenue Comparison — 4 bars: Full 2024 | Full 2025 | Current Period Real | BP (month-filtered or full year) */
@@ -2744,6 +2774,7 @@ ThemeToggle.init();
      PRODUCTS
   ================================================================ */
   function renderProduct() {
+    applyChartDefaults();
     const act24=a(2024), act25=a(2025), act26=a(2026), bp26 = F.month ? b(2026) : bAll(2026);
 
     /* Category — vertical grouped bars */
@@ -2845,11 +2876,12 @@ ThemeToggle.init();
         };
       });
 
+      const cc0 = chartColors();
       const brHdrs = branches.map(br =>
-        `<th class="r" colspan="4" style="background:#1a2340;border-left:2px solid #2a3654;">${br}</th>`
+        `<th class="r" colspan="4" style="background:${cc0.brHd};border-left:2px solid ${cc0.sep};">${br}</th>`
       ).join('');
       const brSubHdrs = branches.map(() =>
-        `<th class="r" style="border-left:2px solid #2a3654;">2024</th><th class="r">2025</th><th class="r">%25v24</th><th class="r">2026 YTD</th>`
+        `<th class="r" style="border-left:2px solid ${cc0.sep};">2024</th><th class="r">2025</th><th class="r">%25v24</th><th class="r">2026 YTD</th>`
       ).join('');
 
       const statusBadge = s => {
@@ -2862,8 +2894,8 @@ ThemeToggle.init();
         <div class="tbl-wrap" style="max-height:500px;overflow:auto;"><table class="tbl">
           <thead>
             <tr>
-              <th rowspan="2">SKU</th><th rowspan="2">Description</th><th rowspan="2">Color</th><th rowspan="2">Size</th>
-              ${C.statusGlob ? '<th rowspan="2" class="r">Status</th>' : ''}
+              <th class="sk1" rowspan="2">SKU</th><th class="sk2" rowspan="2">Description</th><th class="sk3" rowspan="2">Color</th><th class="sk4" rowspan="2">Size</th>
+              ${C.statusGlob ? '<th class="sk5 r" rowspan="2">Status</th>' : ''}
               <th class="r" rowspan="2">2024</th><th class="r" rowspan="2">2025</th><th class="r" rowspan="2">%25v24</th><th class="r" rowspan="2">2026 YTD</th><th class="r" rowspan="2">%26v25</th>
               ${brHdrs}
             </tr>
@@ -2872,14 +2904,14 @@ ThemeToggle.init();
           <tbody>${skus.map((s,i)=>{
             const m=skuMeta[s]||{};
             const brCells = brData.map(b =>
-              `<td class="r" style="border-left:2px solid #2a3654;">${fmt(b.s24[i])}</td><td class="r">${fmt(b.s25[i])}</td>${pctTd(pct(b.s25[i],b.s24[i]))}<td class="r">${fmt(b.s26[i])}</td>`
+              `<td class="r" style="border-left:2px solid ${cc0.sep};">${fmt(b.s24[i])}</td><td class="r">${fmt(b.s25[i])}</td>${pctTd(pct(b.s25[i],b.s24[i]))}<td class="r">${fmt(b.s26[i])}</td>`
             ).join('');
             return `<tr>
-              <td style="font-weight:600">${s}</td>
-              <td style="font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.desc||''}</td>
-              <td style="font-size:10px;">${m.color||''}</td>
-              <td style="font-size:10px;">${m.size||''}</td>
-              ${C.statusGlob ? `<td class="r">${statusBadge(m.statusGlob)}</td>` : ''}
+              <td class="sk1" style="font-weight:600">${s}</td>
+              <td class="sk2" style="font-size:10px;" title="${m.desc||''}">${m.desc||''}</td>
+              <td class="sk3" style="font-size:10px;">${m.color||''}</td>
+              <td class="sk4" style="font-size:10px;">${m.size||''}</td>
+              ${C.statusGlob ? `<td class="sk5 r">${statusBadge(m.statusGlob)}</td>` : ''}
               <td class="r">${fmt(kS24[i])}</td><td class="r">${fmt(kS25[i])}</td>${pctTd(pct(kS25[i],kS24[i]))}<td class="r">${fmt(kS26[i])}</td>${pctTd(pct(kS26[i],kS25[i]))}
               ${brCells}
             </tr>`;
@@ -3098,6 +3130,7 @@ ThemeToggle.init();
      GEOGRAPHY
   ================================================================ */
   function renderRegion() {
+    applyChartDefaults();
     const act24=a(2024), act25=a(2025), act26=a(2026), bp26 = F.month ? b(2026) : bAll(2026);
     const _MN2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const bpLbl = F.month ? (_MN2[+F.month-1]||F.month)+' BP 26' : 'BP 2026';
@@ -3159,7 +3192,7 @@ ThemeToggle.init();
               </table></div>
             </div>`;
           }
-          tblTop.innerHTML = html || '<p style="color:#4a5680;">No branch data available.</p>';
+          tblTop.innerHTML = html || '<p class="dash-muted">No branch data available.</p>';
         }
       }
     } else {
@@ -3237,7 +3270,7 @@ ThemeToggle.init();
         ${globalOpps.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:#4a90e2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🌍 Global hits — low LATAM penetration</div><ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.8;color:${cc.text||'#c8d4e8'}">${globalOpps.join('')}</ul></div>`:''}
         ${uniqueHere.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🚀 Strong here — push to other LATAM</div><ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.8;color:${cc.text||'#c8d4e8'}">${uniqueHere.join('')}</ul></div>`:''}
         ${slowMovers.length?`<div><div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">⚠️ Slow movers — consider discontinuing</div><ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.8;color:${cc.text||'#c8d4e8'}">${slowMovers.join('')}</ul></div>`:''}
-        ${!globalOpps.length&&!slowMovers.length&&!uniqueHere.length?'<div style="color:#4a5680;font-size:12px;">No significant insights for current filter.</div>':''}
+        ${!globalOpps.length&&!slowMovers.length&&!uniqueHere.length?`<div class="dash-muted" style="font-size:12px;">No significant insights for current filter.</div>`:''}
       </div>`;
     });
 
@@ -3249,6 +3282,7 @@ ThemeToggle.init();
      BUFFER & STOCK — TB LATAM coverage analysis
   ================================================================ */
   function renderBuffer() {
+    applyChartDefaults();
     const LATAM5_NORM = ['mexico','brazil','brasil','argentina','colombia','chile'];
     const isLatam5 = r => LATAM5_NORM.includes(norm(r[C.country]||''));
     const isBonded = r => norm(r['COUNTRY 2']||'') === 'bonded';
@@ -3362,7 +3396,7 @@ ThemeToggle.init();
     const lt = calcStockTotals(localStkRows);
     const bt = calcStockTotals(bondedStkRows);
     const fmtVal = v => '$'+(v>=1000?(v/1000).toFixed(1)+'K':v.toFixed(0));
-    const mkCard = (l,v,s,accent) => `<div class="kpi-card" style="min-width:130px;${accent?'border-color:'+accent+';':''}"><div class="kpi-label">${l}</div><div class="kpi-value" style="font-size:20px;">${v}</div><div class="kpi-delta" style="color:#4a5680;">${s}</div></div>`;
+    const mkCard = (l,v,s,accent) => `<div class="kpi-card" style="min-width:130px;${accent?'border-color:'+accent+';':''}"><div class="kpi-label">${l}</div><div class="kpi-value" style="font-size:20px;">${v}</div><div class="kpi-delta">${s}</div></div>`;
     const localLabel = ctFilter ? (_bufCountry+' Local') : 'Local LATAM';
     document.getElementById('buf-kpis').innerHTML =
       `<div style="display:flex;gap:20px;flex-wrap:wrap;width:100%;">` +
@@ -3398,18 +3432,19 @@ ThemeToggle.init();
     let sugHtml='';
     if(pushItems.length||discItems.length){
       sugHtml=`<div style="display:flex;gap:12px;flex-wrap:wrap;">`;
-      if(pushItems.length) sugHtml+=`<div style="flex:1;min-width:240px;background:#0f2217;border:1px solid #22c55e33;border-radius:10px;padding:14px;">
+      const _lgt = isLight();
+      if(pushItems.length) sugHtml+=`<div style="flex:1;min-width:240px;background:${_lgt?'#f0fdf4':'#0f2217'};border:1px solid ${_lgt?'#bbf7d0':'#22c55e33'};border-radius:10px;padding:14px;">
         <div style="font-weight:700;font-size:12px;color:#22c55e;margin-bottom:8px;">🚀 Push Candidates</div>
-        ${pushItems.map(r=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid #1a2940;"><strong>${r.sku}</strong> — ${r.desc.slice(0,40)} <span style="color:#22c55e">${r.suggestion.text}</span></div>`).join('')}</div>`;
-      if(discItems.length) sugHtml+=`<div style="flex:1;min-width:240px;background:#1f0f0f;border:1px solid #ef444433;border-radius:10px;padding:14px;">
+        ${pushItems.map(r=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid ${_lgt?'#d1fae5':'#1a2940'};"><strong>${r.sku}</strong> — ${r.desc.slice(0,40)} <span style="color:#22c55e">${r.suggestion.text}</span></div>`).join('')}</div>`;
+      if(discItems.length) sugHtml+=`<div style="flex:1;min-width:240px;background:${_lgt?'#fff5f5':'#1f0f0f'};border:1px solid ${_lgt?'#fecaca':'#ef444433'};border-radius:10px;padding:14px;">
         <div style="font-weight:700;font-size:12px;color:#ef4444;margin-bottom:8px;">⚠️ Discontinue Candidates</div>
-        ${discItems.map(r=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid #1a2940;"><strong>${r.sku}</strong> — ${r.desc.slice(0,40)} <span style="color:#ef4444">${r.suggestion.text}</span></div>`).join('')}</div>`;
+        ${discItems.map(r=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid ${_lgt?'#fee2e2':'#1a2940'};"><strong>${r.sku}</strong> — ${r.desc.slice(0,40)} <span style="color:#ef4444">${r.suggestion.text}</span></div>`).join('')}</div>`;
       sugHtml+=`</div>`;
     }
     document.getElementById('buf-suggestions').innerHTML=sugHtml;
 
     // Sortable table
-    const covCol=v=>v==null?'#4a5680':v>=3?'#22c55e':v>=1.5?'#f59e0b':'#ef4444';
+    const covCol=v=>v==null?isLight()?'#94a3b8':'#4a5680':v>=3?'#22c55e':v>=1.5?'#f59e0b':'#ef4444';
     const covFmt=v=>v==null?'—':v.toFixed(1)+'mo';
     const ordMonHdrs=bufMonths.map(ym=>`<th class="r sort-btn" data-col="buf_${ym}" title="Orders ${monLbl(ym)}">Orders<br>${monLbl(ym)}</th>`).join('');
     const covHdrs=bufMonths.map(ym=>`<th class="r sort-btn" data-col="cov_${ym}">+${monLbl(ym)}</th>`).join('');
@@ -3472,7 +3507,7 @@ ThemeToggle.init();
         <th class="r sort-btn" data-col="stock">Stock<br>Qty ${arrowFor('stock')}</th>
         <th class="r sort-btn" data-col="value">Stock<br>Value ${arrowFor('value')}</th>
         ${ordMonHdrs}
-        <th class="r sort-btn" data-col="covNow" style="background:#1a2340;">Coverage<br>Now ${arrowFor('covNow')}</th>
+        <th class="r sort-btn" data-col="covNow" style="background:${isLight()?'#eff6ff':'#1a2340'};">Coverage<br>Now ${arrowFor('covNow')}</th>
         ${covHdrs}
         <th class="r">Total<br>CBM</th>
       </tr></thead>
