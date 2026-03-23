@@ -1349,7 +1349,7 @@ body.dark .proj-cmd-box  { background: #1a2a3c; border-color: #2a3a4c; color: #c
     .h340 { height: 340px; } .h400 { height: 400px; } .h460 { height: 460px; }
 
     /* ── DARK TABLE ── */
-    .tbl-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #1a2236; }
+    .tbl-wrap { overflow-x: scroll; border-radius: 8px; border: 1px solid #1a2236; }
     .tbl-wrap::-webkit-scrollbar { width: 7px; height: 7px; }
     .tbl-wrap::-webkit-scrollbar-track { background: #0d1321; }
     .tbl-wrap::-webkit-scrollbar-thumb { background: #2a3454; border-radius: 4px; }
@@ -1461,7 +1461,7 @@ body.dark .proj-cmd-box  { background: #1a2a3c; border-color: #2a3a4c; color: #c
     body.light .chart-title { color: #0f172a !important; font-weight: 700 !important; }
     body.light .chart-sub { color: #64748b !important; }
     /* Tables */
-    body.light .tbl-wrap { border-color: #dde3ed !important; box-shadow: 0 2px 10px rgba(0,0,0,.06) !important; background: #ffffff !important; border-radius: 10px !important; overflow-x: auto !important; }
+    body.light .tbl-wrap { border-color: #dde3ed !important; box-shadow: 0 2px 10px rgba(0,0,0,.06) !important; background: #ffffff !important; border-radius: 10px !important; overflow-x: scroll !important; }
     body.light .tbl th { background: #f1f5f9 !important; color: #334155 !important; border-bottom: 2px solid #dde3ed !important; font-weight: 700 !important; }
     body.light .tbl td { color: #0f172a !important; border-bottom-color: #eef2f7 !important; }
     body.light .tbl tr:hover td { background: #eff6ff !important; }
@@ -3031,7 +3031,7 @@ ThemeToggle.init();
       };
 
       document.getElementById('tbl-sku').innerHTML = `
-        <div class="tbl-wrap" style="max-height:500px;overflow-y:auto;overflow-x:scroll;"><table class="tbl">
+        <div style="max-height:500px;overflow-y:auto;border-radius:8px;"><div class="tbl-wrap" style="overflow-x:scroll;border-radius:0;max-height:none;"><table class="tbl">
           <thead>
             <tr>
               <th class="sk1" rowspan="2">SKU</th><th class="sk2" rowspan="2">Description</th><th class="sk3" rowspan="2">Color</th><th class="sk4" rowspan="2">Size</th>
@@ -3056,10 +3056,11 @@ ThemeToggle.init();
               ${brCells}
             </tr>`;
           }).join('')}
-          </tbody></table></div>`;
-      // Add top scrollbar mirroring the bottom one
-      const skuWrap = document.querySelector('#tbl-sku .tbl-wrap');
-      if (skuWrap) addTopScrollbar(skuWrap, skuWrap);
+          </tbody></table></div></div>`;
+      // Top scrollbar: insert BEFORE the outer div, sync with inner .tbl-wrap
+      const skuOuter = document.querySelector('#tbl-sku > div');
+      const skuWrap  = skuOuter?.querySelector('.tbl-wrap');
+      if (skuOuter && skuWrap) addTopScrollbar(skuOuter, skuWrap);
     }
 
     // Branch profile cards (if branch column is present and different from country)
